@@ -1,0 +1,24 @@
+bin/
+obj/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+.idea
+*.sln.DotSettings.user
+.vs/
+.claude/
+.claude-plugin/
+CLAUDE.md
+.devcontainer/
+.devcontainer
+.vscode
+.nuget/
+plugins/
+# Local test files
+*fdf140b4-73e5-4c7a-a436-7117be4b3da9*
+*/Mt.Complete/Certs/*
+*.env
+*.local.*
+!*.local.*.*
+.worktreeconfig
+.DS_Store

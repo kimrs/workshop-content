@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- §3, §11: EF Core 10 + Npgsql. Implements the domain persistence ports. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Mt.Domain/Mt.Domain.csproj" />
+    <!-- Spec 12 D6: persistence implements the transport ports (Postgres polling table). -->
+    <ProjectReference Include="../Mt.Transport/Mt.Transport.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Pin EF Core to one version so the Npgsql provider and Design tooling agree. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Binds TransportSettings in AddTransport (spec 12 D6). -->
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,6 @@
+root = true
+
+[*.cs]
+# Spec 2 §5: log arguments must not be evaluated when the level is disabled.
+# Fixed codebase-wide with [LoggerMessage] source-generated methods.
+dotnet_diagnostic.CA1873.severity = warning
