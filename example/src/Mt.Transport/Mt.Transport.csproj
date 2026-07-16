@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    §3, §8.3: message transport ports + the InMemory implementation. No project references
+    (spec 12 D6) — the Postgres implementation is a persistence adapter and lives in
+    Mt.Persistence/Transport/, so these ports stay droppable in front of a real broker.
+  -->
+
+
+</Project>

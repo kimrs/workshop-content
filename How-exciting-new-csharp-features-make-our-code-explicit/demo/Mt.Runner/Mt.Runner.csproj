@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Mt.Domain/Mt.Domain.csproj" />
+    <ProjectReference Include="../Mt.DistinctComics/Mt.DistinctComics.csproj" />
+  </ItemGroup>
+
+</Project>

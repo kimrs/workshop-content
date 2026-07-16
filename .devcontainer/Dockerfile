@@ -37,6 +37,16 @@ RUN wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod
   apt-get install -y --no-install-recommends dotnet-sdk-10.0 && \
   apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Install .NET 11 SDK (preview) side-by-side with .NET 10.
+# Previews aren't in the MS apt feed, so use the official install script and
+# drop it into the same DOTNET_ROOT (/usr/share/dotnet) the apt package uses,
+# so the single `dotnet` muxer sees both SDKs.
+ARG DOTNET_SDK_11_VERSION=11.0.100-preview.6.26359.118
+RUN wget https://dot.net/v1/dotnet-install.sh -O /tmp/dotnet-install.sh && \
+  chmod +x /tmp/dotnet-install.sh && \
+  /tmp/dotnet-install.sh --version "${DOTNET_SDK_11_VERSION}" --install-dir /usr/share/dotnet && \
+  rm /tmp/dotnet-install.sh
+
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \
   chown -R node:node /usr/local/share

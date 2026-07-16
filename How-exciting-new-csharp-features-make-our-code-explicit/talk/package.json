@@ -1,0 +1,14 @@
+{
+  "name": "talk",
+  "private": true,
+  "scripts": {
+    "dev": "slidev slides.md --open",
+    "build": "slidev build slides.md",
+    "export": "slidev export slides.md"
+  },
+  "dependencies": {
+    "@slidev-polls/component": "^0.6.0",
+    "@slidev/cli": "latest",
+    "@slidev/theme-default": "latest"
+  }
+}

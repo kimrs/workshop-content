@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Spec 2 §4: the frontend our users watch for migration status. Log-only for the workshop. -->
+
+
+  <ItemGroup>
+    <ProjectReference Include="../Mt.Domain/Mt.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

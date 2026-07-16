@@ -22,3 +22,8 @@ plugins/
 !*.local.*.*
 .worktreeconfig
 .DS_Store
+
+# Slidev deck
+**/talk/node_modules/
+**/talk/dist/
+**/talk/.slidev/
