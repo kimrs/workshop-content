@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: ghcr.io/asm0dey/slidev-polls-backend:latest
+    environment:
+      SPRING_DATASOURCE_URL: 'jdbc:h2:file:/data/polls;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE'
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ''
+    volumes:
+      - polls-data:/data
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+volumes:
+  polls-data:

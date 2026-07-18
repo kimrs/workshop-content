@@ -10,7 +10,7 @@ drawings:
   enabled: false
 addons:
   - "@slidev-polls/component"
-# ⚠️ Replace with your deployed slidev-polls backend URL (see talk/README.md → Poll runbook)
+# ⚠️ Before the talk: paste the day's trycloudflare.com URL here (talk/README.md → Poll runbook); don't commit it
 pollServer: https://polls.example.com
 ---
 

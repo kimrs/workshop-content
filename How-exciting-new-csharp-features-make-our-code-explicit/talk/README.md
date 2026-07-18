@@ -20,6 +20,23 @@ npm run dev        # opens the deck at localhost:3030
 > Fix: `rm -rf node_modules package-lock.json && npm install`. Run the deck once on
 > the presentation machine *before* the day.
 
+## Hosting (GitHub Pages)
+
+The deck is served at **https://solstad.dev/closed-union-slides/**. `solstad.dev` is the
+custom domain of the `kimrs.github.io` user site, so every project repo publishes under
+`solstad.dev/<repo-name>/` — the built deck therefore lives in a repo named
+[`closed-union-slides`](https://github.com/kimrs/closed-union-slides) (gh-pages branch,
+build output only; the source stays here).
+
+`.github/workflows/deploy-slides.yml` rebuilds and republishes on every push to `main`
+that touches `talk/`. It builds with `--base /closed-union-slides/` (must match the repo
+name) and pushes cross-repo using the `SLIDES_DEPLOY_TOKEN` secret — a fine-grained PAT
+with **Contents: read & write** on `closed-union-slides` only. If the token expires,
+mint a new one and `gh secret set SLIDES_DEPLOY_TOKEN -R kimrs/workshop-content`.
+
+> The poll backend can **not** run on Pages (static hosting only) — see the poll runbook
+> below for where it lives.
+
 ## Before walking on stage
 
 1. From `How-exciting-new-csharp-features-make-our-code-explicit/`: `dotnet build demo/Demo.slnx`
@@ -36,39 +53,35 @@ The "Which one is correct?" slide runs a live audience poll via
 [slidev-polls](https://github.com/asm0dey/slidev-polls): audience scans the QR,
 votes on their phones, and the next slide ("The verdict") reveals the live tally.
 
-### One-time setup
+The backend runs **on the presentation laptop** (`talk/compose.yml`), exposed through a
+Cloudflare quick tunnel. The tunnel matters for two reasons: venue Wi-Fi usually has
+client isolation (phones can't reach the laptop's LAN IP), and the poll calls must be
+HTTPS or the browser blocks them as mixed content. Present from the local dev deck
+(`npm run dev`) — you need it for the live demos anyway; the Pages deck is the
+shareable copy.
 
-1. **Deploy the backend** somewhere the audience's phones can reach (Fly.io,
-   a small VPS, …). Single container, no Postgres needed:
+### One-time setup (do at home, survives the tunnel restarting)
 
-   ```yaml
-   # compose.yml
-   services:
-     backend:
-       image: ghcr.io/asm0dey/slidev-polls-backend:latest
-       environment:
-         SPRING_DATASOURCE_URL: 'jdbc:h2:file:/data/polls;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE'
-         SPRING_DATASOURCE_USERNAME: sa
-         SPRING_DATASOURCE_PASSWORD: ''
-         SPRING_PROFILES_ACTIVE: prod   # only with TLS in front
-       volumes:
-         - polls-data:/data
-       ports:
-         - "8080:8080"
-       restart: unless-stopped
-   volumes:
-     polls-data:
-   ```
-
-2. **First run**: open `https://<your-host>/admin/`, the wizard creates your
+1. **Start the backend**: `docker compose up -d` in `talk/`. Poll definitions and your
+   admin account live in the `polls-data` volume, so this is once.
+2. **First run**: open `http://localhost:8080/admin/`, the wizard creates your
    presenter account.
 3. **Create the poll**: slug `csharp15` (must match the `<PollQr slug>` in
    `slides.md` — change both if you pick another), one single-choice question
    "Which one is correct?" with options `closed` / `union` / `how should I know?`.
-4. **Wire the deck**: in `slides.md` frontmatter, replace
-   `pollServer: https://polls.example.com` with your real URL. In the admin
-   question editor click **Copy snippet** and paste it over the placeholder
-   `<PollResults …/>` tag on "The verdict" slide.
+4. **Wire the verdict slide**: in the admin question editor click **Copy snippet** and
+   paste it over the placeholder `<PollResults …/>` tag on "The verdict" slide (only
+   the `pollId` needs to come from the snippet — it's stable, so commit it).
+
+### Before the talk (tunnel URL changes every time)
+
+1. `docker compose up -d` (if the laptop rebooted), then
+   `cloudflared tunnel --url http://localhost:8080`
+   (`brew install cloudflared` once). It prints an `https://….trycloudflare.com` URL.
+2. Put that URL in the `pollServer:` frontmatter of `slides.md` — the dev server
+   hot-reloads. **Don't commit the ephemeral URL.**
+3. Sanity check from your **phone on mobile data**: open
+   `https://….trycloudflare.com/admin/` — that's also the tally view you'll keep open.
 
 ### On the day
 
