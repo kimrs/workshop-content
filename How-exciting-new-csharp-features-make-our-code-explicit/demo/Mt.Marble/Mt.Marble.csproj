@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The other "third-party vendor package": Marble's target-side adapters. -->
+
+  <ItemGroup>
+    <ProjectReference Include="../Mt.Domain/Mt.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

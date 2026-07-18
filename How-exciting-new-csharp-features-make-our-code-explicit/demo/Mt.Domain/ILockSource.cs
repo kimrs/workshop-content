@@ -1,9 +1,11 @@
+using Mt.Results;
+
 namespace Mt.Domain;
 
 /// <summary>Lock the hero in the source system before migrating it.</summary>
 public interface ILockSource
 {
-    Response Handle(long migrationId);
+    Result<Response> Handle(Id migrationId);
 
     public abstract record Response
     {

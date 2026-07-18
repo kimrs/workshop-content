@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Act two: the Result pattern as a union — no hierarchy, no discard in Then. -->
+
+</Project>

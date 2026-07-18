@@ -1,4 +1,5 @@
 using Mt.Domain;
+using Mt.Results;
 
 namespace Mt.DistinctComics;
 
@@ -11,5 +12,6 @@ public sealed record Throttled(TimeSpan RetryAfter) : ILockSource.Response;
 
 public sealed class DistinctComicsLockSource : ILockSource
 {
-    public ILockSource.Response Handle(long migrationId) => new Throttled(TimeSpan.FromMinutes(5));
+    public Result<ILockSource.Response> Handle(Id migrationId) =>
+        new Completed<ILockSource.Response>(new Throttled(TimeSpan.FromMinutes(5)));
 }

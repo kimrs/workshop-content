@@ -1,17 +1,26 @@
+using System.Net;
+using Mt.Results;
+
 namespace Mt.Domain;
 
-/// <summary>Locks the source, then advances the migration. The opening slide.</summary>
-public sealed class Handler(ILockSource lockSource)
+/// <summary>Locks the source and the target, then tells the user. The opening slide.</summary>
+public sealed class Handler(
+    ILockSource lockSource,
+    ILockTarget lockTarget,
+    INotifyCompletion notifyCompletion)
 {
-    public void Handle(long migrationId)
+    public void Handle(Id migrationId)
     {
-        var action = lockSource.Handle(migrationId) switch
-        {
-            ILockSource.Response.Locked => $"✅ Source locked — advancing migration {migrationId} to Transform",
-            ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
-            _ => throw new ArgumentOutOfRangeException(nameof(migrationId), migrationId, null),
-        };
+        var result = lockSource.Handle(migrationId)
+            .Then(_ => lockTarget.Handle(migrationId))
+            .Then(_ => notifyCompletion.Handle(new INotifyCompletion.Request.Migrated(migrationId)));
 
-        Console.WriteLine(action);
+        if (result is Failed failed)
+        {
+            Console.WriteLine($"Failed {failed}");
+        } else
+        {
+            Console.WriteLine($"Successfully locked source and target");
+        }
     }
 }

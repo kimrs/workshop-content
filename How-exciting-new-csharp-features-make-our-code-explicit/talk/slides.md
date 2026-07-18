@@ -561,19 +561,21 @@ If the poll was skipped (network fallback), skip this slide too — you already 
 
 ---
 
-# 
+# `closed` support shared data
 
 ```csharp
-// Mt.Domain.INotifyCompletion
-public closed record Request(Id MigrationId)
-{
-    public sealed record Migrated(Id MigrationId) : Request(MigrationId);
-    public sealed record Cancelled(Id MigrationId) : Request(MigrationId);
-}
+namespace Mt.Domain;
 
-// Mt.Marble.NotifyCompletion
-var pigeon = await fetchExternalId.HandleAsync(
-    new IFetch.Request(request.MigrationId, /* … */), ct);
+public interface INotifyCompletion
+{
+    void Handle(Request request);
+
+    public closed record Request(Id MigrationId)
+    {
+        public sealed record Migrated(Id MigrationId) : Request(MigrationId);
+        public sealed record Cancelled(Id MigrationId) : Request(MigrationId);
+    }
+}
 ```
 
 <!--
@@ -584,100 +586,339 @@ Point at the bottom: "And the consumer reads request.MigrationId before any swit
 
 ---
 
-# INotifyCompletion
-
-<<< ./snippets/architecture.mmd mermaid
-
----
-# When cases share data
+# `union` does not support shared data
 
 ```csharp
-// Mt.Domain.INotifyCompletion
-public closed record Request(Id MigrationId)
-{
-    public sealed record Migrated(Id MigrationId) : Request(MigrationId);
-    public sealed record Cancelled(Id MigrationId) : Request(MigrationId);
+namespace Mt.Domain;
 
-    public sealed record Failed : Request;
-//                       ~~~~~~
-// error CS1729: 'Request' does not contain a constructor that takes 0 arguments
+public interface INotifyCompletion
+{
+    void Handle(Request request);
+
+    public closed record Request(Id MigrationId)
+    {
+        public sealed record Migrated(Id MigrationId) : Request(MigrationId);
+//                                                  ~~~~~~~~~~~~~~~~~~~~
+// error CS0509: 'Request.Migrated': cannot derive from sealed type 'Request'
+        public sealed record Cancelled(Id MigrationId) : Request(MigrationId);
+//                                                  ~~~~~~~~~~~~~~~~~~~~
+// error CS0509: 'Request.Migrated': cannot derive from sealed type 'Request'
+    }
 }
 ```
 
-<!--
-"And the shared data is ENFORCED. Add a case that forgets the MigrationId — it doesn't get mishandled somewhere downstream. It cannot exist. CS1729, before exhaustiveness even gets a turn."
-
-"So the non-vague rule: cases share data → closed is the only option. Cases share nothing → the base type is ceremony, and that's where the union shines. Which brings us to a type whose cases share absolutely nothing…" → Act two, the Result pattern.
--->
-
 ---
 
-# Act two: a different patient, same disease
+# When to use `union` and when to use `closed`
+<v-click>
 
-Remember the *hold that thought*? The **Result pattern**:
-
-```csharp
-public abstract record Result<T>
-{
-    public sealed record Completed(T Value) : Result<T>;
-    public sealed record Failed(IReadOnlyList<Failure> Failures) : Result<T>;
-}
-```
+- If the types share data? => `closed`
+</v-click>
 
 <v-click>
 
-- Every combinator switches over it — **with a `_`**
-- The cases share **nothing**
-- The base record is **empty**
+- If the types does not share data? => `union`
 
 </v-click>
 
 <v-click>
 
-### The inheritance is ceremony. This type never wanted to be a hierarchy.
+- House style matters
 
 </v-click>
 
-<!--
-[0:27] Callback to the foreshadow from the "why is _ there" slide: "I told you to hold a thought — here it is. The Result type from the same codebase: either it completed with a value, or it failed with reasons. Every handler you've seen returns one."
-
-Click through: "Same disease — open hierarchy, discard switches in every combinator, same reading tax. I could slap closed on it and be done. But look closer: what does the base Result actually CONTAIN? Nothing. No shared property, no shared method. Completed and Failed have no 'is-a' relationship. The base type is scaffolding I built because C# had no other way to say 'either'."
-
-"For twenty years, inventing a fake base type was the ONLY way. C# 15 adds the honest way."
--->
+<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
+  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
+    Show them an example with <code>union</code>!
+  </div>
+  <img src="/madstorgersen.jpg" class="h-48 rounded-lg shadow-xl rotate-2" alt="Mads Torgersen mid-proclamation on stage" />
+</div>
 
 ---
 
-# `union` — *one of these types*, no hierarchy
+# The `Result` pattern
 
-What preview 6 accepts (the proposal's `case` form isn't in yet):
+```csharp{all|3}
+public interface ILockSource
+{
+    Result<Response> Handle(Id migrationId);
+
+    public closed record Response
+    {
+        /// <summary>Source locked the hero.</summary>
+        public sealed record Locked : Response;
+
+        /// <summary>Source did not lock this time; the step decides whether to retry.</summary>
+        public sealed record Faulted(string Reason) : Response;
+    }
+}
+```
+
+---
+
+# The `Result` pattern
 
 ```csharp
-public union Response(Response.Proceed, Response.DoNotProceed)
+public sealed class Handler(
+    ILockSource lockSource,
+    ILockTarget lockTarget,
+    INotifyCompletion notifyCompletion)
 {
-    public sealed record Proceed;
-    public sealed record DoNotProceed;
+    public void Handle(Id migrationId)
+    {
+        var result = lockSource.Handle(migrationId)
+            .Then(_ => lockTarget.Handle(migrationId))
+            .Then(_ => notifyCompletion.Handle(new INotifyCompletion.Request.Migrated(migrationId)));
+
+        if (result is Failed failed)
+        {
+            Console.WriteLine($"Failed {failed}");
+        } else
+        {
+            Console.WriteLine($"Successfully locked source and target");
+        }
+    }
 }
 ```
 
 <v-click>
 
-- Standalone records — **no base type**
-- `Response` is a **struct** holding exactly one of them
-- The declaration **is** the case list — switches are exhaustive
+- `Then` clause only executes when `Completed<T>` is returned
 
 </v-click>
 
-<!--
-[0:29] "A union declares the choice directly: Response is one of these two types. The records don't derive from anything — look, no colon, no base. The union header lists the complete set, and that list is what the compiler checks switches against."
+<v-click>
 
-Syntax honesty: "The design proposal has a prettier inline form — 'case Proceed; case DoNotProceed;' like F# or Rust. Preview 6 doesn't parse it yet. What ships today is this: the union with its case types declared in the body and listed in the header. If you nest them like this, call sites even keep the same Response.Proceed spelling as the old hierarchy."
+- `Failed` propagates
 
-"Exhaustiveness works exactly like closed — same CS8509, names the missing case, breaks every switch site. We proved it on the real codebase. So far it sounds like closed with different clothes. It is not. Here's what's really underneath."
--->
+</v-click>
 
 ---
 
+# The `Result` pattern
+```csharp
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>;
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),
+                _ => throw new Exception()
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern
+```csharp
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>;
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+---
+
+# The `Result` pattern
+```csharp
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>;
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern
+```csharp
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>; // pointless T
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern - with `union`
+```csharp {all|1}
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>; // pointless T
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern - with `union`
+```csharp {1|2,3}
+public union Result<T>(Completed<T>, Failed);
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>; // pointless T
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+---
+
+# The `Result` pattern - with `union`
+```csharp {2,3|3}
+public union Result<T>(Completed<T>, Failed);
+public sealed record Completed<T>(T Value);
+public sealed record Failed<T>(string Reason); // pointless T
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern - with `union`
+```csharp {3|13}
+public union Result<T>(Completed<T>, Failed);
+public sealed record Completed<T>(T Value);
+public sealed record Failed(string Reason);
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+---
+
+# The `Result` pattern - with `union`
+```csharp {13|14}
+public union Result<T>(Completed<T>, Failed);
+public sealed record Completed<T>(T Value);
+public sealed record Failed(string Reason);
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed f => f,
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+---
+
+# The `Result` pattern - with `union`
+```csharp {none|all}
+public union Result<T>(Completed<T>, Failed);
+public sealed record Completed<T>(T Value);
+public sealed record Failed(string Reason);
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed f => f
+            };
+    }
+}
+```
+---
 # What a `union` actually is
 
 ```text

@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="Mt.DistinctComics/Mt.DistinctComics.csproj" />
   <Project Path="Mt.Domain/Mt.Domain.csproj" />
+  <Project Path="Mt.Marble/Mt.Marble.csproj" />
+  <Project Path="Mt.Results/Mt.Results.csproj" />
   <Project Path="Mt.Runner/Mt.Runner.csproj" />
 </Solution>

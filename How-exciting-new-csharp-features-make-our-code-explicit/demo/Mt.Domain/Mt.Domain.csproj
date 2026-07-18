@@ -2,4 +2,8 @@
 
   <!-- The step as we ship it today: an open Response hierarchy (talk demo, opening). -->
 
+  <ItemGroup>
+    <ProjectReference Include="../Mt.Results/Mt.Results.csproj" />
+  </ItemGroup>
+
 </Project>

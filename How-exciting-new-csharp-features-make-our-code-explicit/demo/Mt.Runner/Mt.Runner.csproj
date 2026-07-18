@@ -7,6 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="../Mt.Domain/Mt.Domain.csproj" />
     <ProjectReference Include="../Mt.DistinctComics/Mt.DistinctComics.csproj" />
+    <ProjectReference Include="../Mt.Marble/Mt.Marble.csproj" />
   </ItemGroup>
 
 </Project>
