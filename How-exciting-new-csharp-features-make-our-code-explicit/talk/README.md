@@ -22,17 +22,15 @@ npm run dev        # opens the deck at localhost:3030
 
 ## Hosting (GitHub Pages)
 
-The deck is served at **https://solstad.dev/closed-union-slides/**. `solstad.dev` is the
-custom domain of the `kimrs.github.io` user site, so every project repo publishes under
-`solstad.dev/<repo-name>/` — the built deck therefore lives in a repo named
-[`closed-union-slides`](https://github.com/kimrs/closed-union-slides) (gh-pages branch,
-build output only; the source stays here).
+The deck is served at **https://solstad.dev/workshop-content/** from this repo's own
+GitHub Pages. `solstad.dev` is the custom domain of the `kimrs.github.io` user site, so
+every project repo with Pages enabled publishes under `solstad.dev/<repo-name>/`.
 
-`.github/workflows/deploy-slides.yml` rebuilds and republishes on every push to `main`
-that touches `talk/`. It builds with `--base /closed-union-slides/` (must match the repo
-name) and pushes cross-repo using the `SLIDES_DEPLOY_TOKEN` secret — a fine-grained PAT
-with **Contents: read & write** on `closed-union-slides` only. If the token expires,
-mint a new one and `gh secret set SLIDES_DEPLOY_TOKEN -R kimrs/workshop-content`.
+`.github/workflows/deploy-slides.yml` rebuilds and redeploys on every push to `main`
+that touches `talk/`, using the official Pages actions — no tokens or secrets. The base
+path is derived from the repo name, so a copy of this repo under a new name (the
+per-talk workflow) publishes at `solstad.dev/<new-name>/` without edits. The only
+per-repo setup is enabling Pages once: **Settings → Pages → Source: GitHub Actions**.
 
 > The poll backend can **not** run on Pages (static hosting only) — see the poll runbook
 > below for where it lives.

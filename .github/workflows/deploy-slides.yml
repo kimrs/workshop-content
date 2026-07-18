@@ -12,8 +12,13 @@ concurrency:
   group: deploy-slides
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,13 +34,20 @@ jobs:
 
       - run: npm ci
 
-      # Served at solstad.dev/closed-union-slides/ — the base path must match the repo name
-      - run: npm run build -- --base /closed-union-slides/
+      # Served at solstad.dev/<repo-name>/ — deriving the base from the repo
+      # name keeps forks/copies of this repo publishing without edits
+      - run: npm run build -- --base /${{ github.event.repository.name }}/
 
-      - uses: peaceiris/actions-gh-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          personal_token: ${{ secrets.SLIDES_DEPLOY_TOKEN }}
-          external_repository: kimrs/closed-union-slides
-          publish_branch: gh-pages
-          publish_dir: How-exciting-new-csharp-features-make-our-code-explicit/talk/dist
-          force_orphan: true
+          path: How-exciting-new-csharp-features-make-our-code-explicit/talk/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
