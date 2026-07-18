@@ -10,7 +10,7 @@ drawings:
   enabled: false
 addons:
   - "@slidev-polls/component"
-# ⚠️ Before the talk: paste the day's trycloudflare.com URL here (talk/README.md → Poll runbook); don't commit it
+# ⚠️ Replace with your deployed slidev-polls backend URL (see talk/README.md → Poll runbook)
 pollServer: https://polls.example.com
 ---
 
@@ -67,35 +67,7 @@ Mention: everything shown today is in one repo — code, demos, these slides —
 
 # Migration Tool Architecture
 
-```mermaid
-%%{init: {"theme": "redux"}}%%
-flowchart TB
-    subgraph Mt.Domain["Mt.Domain"]
-      classDef domain indigo;
-      Handler[Handler Class]:::domain
-      ILockSource[ILockSource Port]:::domain
-      ILockTarget[ILockTarget Port]:::domain
-      INotifyCompletion[INotifyCompletion Port]:::domain
-    end
-
-    subgraph Mt.DistinctComics["Mt.DistinctComics"]
-      classDef comics teal;
-      LockSourceImpl["LockSource Adapter"]:::comics
-    end
-
-    subgraph Mt.Marble["Mt.Marble"]
-      classDef marvel violet;
-      LockTargetImpl["LockTarget Adapter"]:::marvel
-    end
-
-    Handler --> ILockSource
-    Handler --> ILockTarget
-    Handler --> INotifyCompletion
-
-    ILockSource -.-> Mt.DistinctComics
-    ILockTarget -.-> Mt.Marble
-
-```
+<<< ./snippets/architecture.mmd mermaid
 
 ---
 
@@ -266,70 +238,12 @@ Last click — the foreshadow: "And before you file this under 'adapter problem'
 <v-switch>
 <template #0>
 
-```mermaid
-%%{init: {"theme": "redux"}}%%
-flowchart TB
-    subgraph Mt.Domain["Mt.Domain"]
-      classDef domain indigo;
-      Handler[Handler Class]:::domain
-      ILockSource[ILockSource Port]:::domain
-      ILockTarget[ILockTarget Port]:::domain
-      INotifyCompletion[INotifyCompletion Port]:::domain
-    end
-
-    subgraph Mt.DistinctComics["Mt.DistinctComics"]
-      classDef comics teal;
-      LockSourceImpl["LockSource Adapter"]:::comics
-    end
-
-    subgraph Mt.Marble["Mt.Marble"]
-      classDef marvel violet;
-      LockTargetImpl["LockTarget Adapter"]:::marvel
-    end
-
-    Handler --> ILockSource
-    Handler --> ILockTarget
-    Handler --> INotifyCompletion
-
-    ILockSource -.-> Mt.DistinctComics
-    ILockTarget -.-> Mt.Marble
-
-```
+<<< ./snippets/architecture.mmd mermaid
 
 </template>
 <template #1>
 
-```mermaid
-%%{init: {"theme": "redux"}}%%
-flowchart TB
-    subgraph Mt.Domain["Mt.Domain"]
-      classDef domain indigo;
-      Handler[Handler Class]:::domain
-      ILockSource[ILockSource Port]:::domain
-      ILockTarget[ILockTarget Port]:::domain
-      INotifyCompletion[INotifyCompletion Port]:::domain
-    end
-
-    subgraph Mt.DistinctComics["Mt.DistinctComics"]
-      classDef comics teal;
-      LockSourceImpl["LockSource Adapter"]:::comics
-    end
-
-    subgraph Mt.Marble["Mt.Marble"]
-      classDef marvel violet;
-      LockTargetImpl["LockTarget Adapter"]:::marvel
-    end
-
-    Handler --> ILockSource
-    Handler --> ILockTarget
-    Handler --> INotifyCompletion
-
-    ILockSource -.-> Mt.DistinctComics
-    ILockTarget -.-> Mt.Marble
-
-    style Mt.DistinctComics fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
-    style Mt.Marble fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
-```
+<<< ./snippets/architecture-adapters-highlighted.mmd mermaid
 
 ### Can inherit from `public` classes in **Mt.Domain**
 
@@ -550,6 +464,27 @@ Let the laugh land, then the bridge: "It turns out they are NOT the same thing �
 
 ---
 
+# When to use `union` and when to use `closed`
+- If the types represent different versions of the same thing? => `closed`
+- If the types represent completely different things => `union`
+
+<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
+  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
+    That's way too vague!
+  </div>
+  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
+</div>
+
+<!--
+Read the two bullets out loud, slowly — let the room FEEL how mushy they are. "Versions of the same thing"… "completely different things"… according to whom?
+
+Click — the facepalm: "I know. That's way too vague. You can argue any type into either bucket."
+
+The bridge: "So let me give you a test that isn't vague. It's about DATA. If the cases share data, only one of these constructs can even express that. Let me show you." → next slide, the INotifyCompletion Request example.
+-->
+
+---
+
 # Which one is correct?
 
 <div class="grid grid-cols-2 gap-4 text-sm">
@@ -626,28 +561,7 @@ If the poll was skipped (network fallback), skip this slide too — you already 
 
 ---
 
-# When to use `union` and when to use `closed`
-- If the types represent different versions of the same thing? => `closed`
-- If the types represent completely different things => `union`
-
-<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
-  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
-    That's way too vague!
-  </div>
-  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
-</div>
-
-<!--
-Read the two bullets out loud, slowly — let the room FEEL how mushy they are. "Versions of the same thing"… "completely different things"… according to whom?
-
-Click — the facepalm: "I know. That's way too vague. You can argue any type into either bucket."
-
-The bridge: "So let me give you a test that isn't vague. It's about DATA. If the cases share data, only one of these constructs can even express that. Let me show you." → next slide, the INotifyCompletion Request example.
--->
-
----
-
-# When cases share data
+# 
 
 ```csharp
 // Mt.Domain.INotifyCompletion
@@ -657,7 +571,7 @@ public closed record Request(Id MigrationId)
     public sealed record Cancelled(Id MigrationId) : Request(MigrationId);
 }
 
-// Mt.Marble.NotifyCompletion — reads the shared data WITHOUT switching
+// Mt.Marble.NotifyCompletion
 var pigeon = await fetchExternalId.HandleAsync(
     new IFetch.Request(request.MigrationId, /* … */), ct);
 ```
@@ -670,6 +584,11 @@ Point at the bottom: "And the consumer reads request.MigrationId before any swit
 
 ---
 
+# INotifyCompletion
+
+<<< ./snippets/architecture.mmd mermaid
+
+---
 # When cases share data
 
 ```csharp

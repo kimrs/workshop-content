@@ -1,0 +1,31 @@
+%%{init: {"theme": "redux"}}%%
+flowchart TB
+    subgraph Mt.Domain["Mt.Domain"]
+      classDef domain indigo;
+      Handler[Handler Class]:::domain
+      ILockSource[ILockSource Port]:::domain
+      ILockTarget[ILockTarget Port]:::domain
+      INotifyCompletion[INotifyCompletion Port]:::domain
+    end
+
+    subgraph Mt.DistinctComics["Mt.DistinctComics"]
+      classDef comics teal;
+      LockSourceImpl["LockSource Adapter"]:::comics
+    end
+
+    subgraph Mt.Marble["Mt.Marble"]
+      classDef marvel violet;
+      LockTargetImpl["LockTarget Adapter"]:::marvel
+      NotifyCompletion["NotifyCompletion Adapter"]:::marvel
+    end
+
+    Handler --> ILockSource
+    Handler --> ILockTarget
+    Handler --> INotifyCompletion
+
+    ILockSource -.-> Mt.DistinctComics
+    ILockTarget -.-> Mt.Marble
+    INotifyCompletion -.-> Mt.Marble
+
+    style Mt.DistinctComics fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
+    style Mt.Marble fill:#fef3c7,stroke:#f59e0b,stroke-width:3px
