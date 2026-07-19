@@ -1,6 +1,17 @@
 services:
+  # The backend image runs as appuser (uid 10001) but ships no /data directory,
+  # so a fresh named volume is root-owned and H2 can't create its database file.
+  # Chown the mount before the backend starts; idempotent on every `up`.
+  volume-perms:
+    image: busybox
+    command: chown -R 10001:10001 /data
+    volumes:
+      - polls-data:/data
   backend:
     image: ghcr.io/asm0dey/slidev-polls-backend:latest
+    depends_on:
+      volume-perms:
+        condition: service_completed_successfully
     environment:
       SPRING_DATASOURCE_URL: 'jdbc:h2:file:/data/polls;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE'
       SPRING_DATASOURCE_USERNAME: sa

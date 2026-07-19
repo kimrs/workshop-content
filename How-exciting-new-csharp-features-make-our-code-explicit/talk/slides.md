@@ -542,12 +542,10 @@ FALLBACK if the network is down (phones show spinners): "The network has voted '
 # The verdict
 
 <div class="flex justify-center">
-  <!-- ⚠️ Placeholder IDs. In the admin UI, open your question and click
-       "Copy snippet" — paste the result here, replacing this tag. -->
   <PollResults
     slug="csharp15"
-    pollId="REPLACE-WITH-POLL-ID"
-    questionId="REPLACE-WITH-QUESTION-ID"
+    pollId="660ff157-d0f9-412c-bcd3-851dec669091"
+    questionId="afe9d87d-a685-4133-8513-bf5387d99bbf"
   />
 </div>
 
