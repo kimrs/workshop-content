@@ -67,27 +67,38 @@ shareable copy.
 3. **Create the poll**: slug `csharp15` (must match the `<PollQr slug>` in
    `slides.md` — change both if you pick another), one single-choice question
    "Which one is correct?" with options `closed` / `union` / `how should I know?`.
-4. **Wire the verdict slide**: in the admin question editor click **Copy snippet** and
-   paste it over the placeholder `<PollResults …/>` tag on "The verdict" slide (only
-   the `pollId` needs to come from the snippet — it's stable, so commit it).
+4. **Wire the poll identity**: in the admin question editor click **Copy snippet** and
+   copy its `pollId`/`questionId` into `talk/.env.local` (`VITE_POLL_ID` /
+   `VITE_POLL_QUESTION_ID`; `VITE_POLL_SLUG` matches step 3). `components/Poll.vue`
+   feeds these to both `<Poll />` tags in `slides.md` — nothing to paste into the deck,
+   and the ids stay out of the committed slides. `.env.local` is git-ignored;
+   `talk/.env.example` is the committed template.
 
 ### Before the talk (tunnel URL changes every time)
 
 1. `docker compose up -d` (if the laptop rebooted), then
    `cloudflared tunnel --url http://localhost:8080`
    (`brew install cloudflared` once). It prints an `https://….trycloudflare.com` URL.
-2. Put that URL in the `pollServer:` frontmatter of `slides.md` — the dev server
-   hot-reloads. **Don't commit the ephemeral URL.**
+2. Put that URL in `talk/.env.local` as `VITE_POLL_SERVER=https://….trycloudflare.com`
+   (copy `talk/.env.example` the first time). `setup/main.ts` injects it into the deck
+   config, so **`slides.md` is never touched at startup**. `.env.local` is git-ignored,
+   so the ephemeral URL can't be committed. Set it *before* `npm run dev` — Vite reads
+   `.env` files at server start (change it later → restart the dev server).
 3. Sanity check from your **phone on mobile data**: open
    `https://….trycloudflare.com/admin/` — that's also the tally view you'll keep open.
 
 ### On the day
 
 - In the running deck, click the poll **sign-in button in the Slidev toolbar**
-  and enter your admin credentials (it mints a deck token).
-- Keep the **admin UI open on your phone** — it's your private live tally
-  *and* the button that flips the question to **Active** while the QR slide is up.
-- Advancing to "The verdict" closes the question and animates the tally on screen.
+  and enter your admin credentials (it mints a deck token). Without it the deck
+  can't open questions and every phone stays on "Waiting for question to open".
+- The question **opens automatically when the QR slide shows** (a hidden
+  `PollResults` panel on that slide does the activation — `PollQr` itself is
+  display-only). Fallback: flip it to **Active** from the admin UI.
+- Keep the **admin UI open on your phone** — it's your private live tally and
+  the manual Active/Closed switch if the automatic path misbehaves.
+- Advancing to "The verdict" reveals the live tally; the question closes for
+  good once you move past that slide.
 - **Network fallback** (scripted in the slide notes): hands vote, then skip
   "The verdict" slide.
 

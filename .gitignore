@@ -27,4 +27,7 @@ plugins/
 **/talk/node_modules/
 **/talk/dist/
 **/talk/.slidev/
+# Ephemeral poll backend URL (Cloudflare tunnel), set per-talk; .env.example is committed
+**/talk/.env.local
+**/talk/.env.*.local
 kimrs.github.io

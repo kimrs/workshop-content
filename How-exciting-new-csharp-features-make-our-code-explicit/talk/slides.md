@@ -10,8 +10,9 @@ drawings:
   enabled: false
 addons:
   - "@slidev-polls/component"
-# ⚠️ Replace with your deployed slidev-polls backend URL (see talk/README.md → Poll runbook)
-pollServer: https://polls.example.com
+# The slidev-polls backend host is injected from talk/.env.local (VITE_POLL_SERVER)
+# via talk/setup/main.ts — it changes every talk, so it stays out of this file.
+# See talk/README.md → Poll runbook.
 ---
 
 # Find a weakness
@@ -525,10 +526,17 @@ public interface ILockSource
   </div>
 </div>
 
+<!-- PollQr is display-only; this hidden panel is what auto-opens the question
+     when the slide shows (needs the toolbar sign-in). The poll identity lives in
+     talk/.env.local via components/Poll.vue — see README → Poll runbook. -->
+<div style="display: none" aria-hidden="true">
+  <Poll />
+</div>
+
 <!--
 LIVE POLL — the audience scans the QR and votes on their phones.
 
-While this slide is up: open the admin UI on your phone and flip the question to ACTIVE — the waiting screens on every phone roll to the question instantly. The admin UI doubles as YOUR live tally view; the room sees no numbers yet.
+The question opens AUTOMATICALLY when this slide shows (hidden PollResults panel above — requires the toolbar sign-in). Fallback: open the admin UI on your phone and flip the question to ACTIVE. Either way the admin UI doubles as YOUR live tally view; the room sees no numbers yet.
 
 Narrate while they vote: "Both compile. Both are exhaustive. Both delete the discard. So which one is the right way to write ILockSource? You have thirty seconds."
 
@@ -542,11 +550,7 @@ FALLBACK if the network is down (phones show spinners): "The network has voted '
 # The verdict
 
 <div class="flex justify-center">
-  <PollResults
-    slug="csharp15"
-    pollId="660ff157-d0f9-412c-bcd3-851dec669091"
-    questionId="afe9d87d-a685-4133-8513-bf5387d99bbf"
-  />
+  <Poll />
 </div>
 
 <!--
