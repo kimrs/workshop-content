@@ -920,159 +920,32 @@ public static class Extensions
     }
 }
 ```
----
-# What a `union` actually is
 
-```text
-IsValueType = True     BaseType = System.ValueType     Interfaces = [IUnion]
-
-Property:     object Value
-Constructor:  .ctor(Proceed)
-Constructor:  .ctor(DoNotProceed)
-```
-
-<v-click>
-
-Three consequences that **will** bite:
-
-```csharp
-// 1. Conversions don't chain (one user-defined conversion max):
-Result<Response> r = new Response.Proceed();               // ❌ CS0029
-Result<Response> r = (Response)new Response.Proceed();     // ✅ one explicit lift
-
-// 2. Reflection sees the wrapper — compiles, FAILS AT RUNTIME:
-Assert.IsType<Response.Proceed>(result.Unwrap());          // ❌ it's the struct
-Assert.IsType<Response.Proceed>(result.Unwrap().Value);    // ✅
-
-// 3. Same story awaits serializers, mocks, ORMs — anything reflective
-```
-
-</v-click>
+<div v-click class="absolute bottom-10 right-10 flex items-end gap-3">
+  <img src="/chefskiss.jpg" class="h-56 rounded-lg shadow-xl -rotate-2" alt="Cartoon chef making the chef's-kiss gesture" />
+</div>
 
 <!--
-[0:31] "This is the compiled union under reflection: a struct implementing IUnion, holding an object Value, one constructor per case. The case types convert into it implicitly. Pattern matching sees straight through the wrapper — positional patterns, property patterns, all of it just works."
+The code fully reveals — the whole `Then` combinator, no pointless default case, exhaustive on the two union members.
 
-Click. "But the wrapper is real, and it leaks in exactly three places. One: C# applies at most ONE user-defined conversion, so case → union → Result needs an explicit lift — we hit this in every adapter we migrated. Two — this one is evil: Assert.IsType against the union compiles fine and fails at RUNTIME, because the boxed thing is the wrapper, not the case. Our test suite had this bug for about four minutes. Three: assume anything reflection-based needs a look."
-
-"None of these are dealbreakers. All of these are why you don't blindly rewrite working hierarchies into unions. Which brings us to the actual question of this talk."
+Click — the chef appears: "And THAT is the whole pattern. Two cases, exhaustively matched, no `_ => throw` to apologise for. Chef's kiss."
 -->
 
 ---
 
-# So which one? The test is *asymmetric*
-
-<br>
-
-| Situation | Verdict |
-|---|---|
-| Cases **share data/behavior**; consumers use the base without switching | **forced → `closed`** |
-| Cases include **types you don't own**, or one type in **several unions** | **forced → `union`** |
-| Neither — no shared members, all owned, one grouping | **free zone** — you choose |
-
+# Why is this important?
 <v-click>
 
-**In the free zone:**
-- existing hierarchy → `closed`
-- greenfield either-or → `union`
-- house style wins
-
+ - Less verbose code
 </v-click>
-
-<!--
-[0:33] THE decision framework — this is the slide people photograph. Take it slowly.
-
-Row 1: "Shared data forces closed — a union has no base type to hoist anything into. The notification Request with its MigrationId: structurally impossible as a union."
-
-Row 2: "Foreign types force union — you can't retrofit inheritance onto types you don't own, and single inheritance means a type joins ONE hierarchy but MANY unions."
-
-Row 3: "Everything else — and honestly, that's most Response types — both work. Then it's pragmatics: our step responses were existing hierarchies, one keyword each, done. Result never wanted to be a hierarchy — that's a union."
-
-The take-home sentence, say it twice: "Shared data decides FOR you. No shared data means YOU get to decide."
-
-Litmus trick: "Say the relationship out loud. 'A Faulted IS A Response' — sounds right? closed. 'A Response is EITHER Locked OR Faulted' — union. Your own sentence tells you."
--->
-
----
-
-# What I want next
-
-<v-clicks>
-
-- The **`case` syntax** for unions
-- Exhaustive switch **statements**
-- A native **`Then`**
-- Built-in **`Option<T>` / `Result<T>`**
-
-</v-clicks>
-
 <v-click>
 
-### My honest dream: that `Mt.Results` — the library this whole codebase leans on — <span v-mark.orange="5">stops needing to exist</span>.
-
+ - Signals intent
 </v-click>
-
-<!--
-[0:36] Quick slide, 90 seconds, keep the energy up.
-
-"Wishlist. The case syntax is designed, just not shipped. Statement exhaustiveness feels like an oversight that preview feedback should fix — file issues, this is literally what previews are for. And once the language has unions, the obvious next step is what every unioned language does: a blessed Option and Result, with syntax for chaining them."
-
-The laugh line — deliver it warmly: "People ask if I'm worried these features make my code obsolete. I maintain a four-hundred-line Result library. I am BEGGING the language team to make it obsolete. The best library is the one you get to delete."
--->
-
----
-
-# Remember the dig?
-
-```csharp
-public closed record Response
-{
-    public sealed record Locked : Response;
-    public sealed record Faulted(string Reason) : Response;
-}
-```
-
-````md magic-move
-```csharp
-var action = lockSource.Handle(migrationId) switch
-{
-    ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
-    _ => $"✅ Source locked — advancing migration {migrationId} to Transform",
-};
-```
-```csharp
-var action = lockSource.Handle(migrationId) switch
-{
-    ILockSource.Response.Locked => $"✅ Source locked — advancing migration {migrationId} to Transform",
-    ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
-};
-```
-````
-
 <v-click>
 
-Minute one: *"which cases does the `_` cover? I have to dig."*
-
-### The compiler does the digging now.
-
+ - Make it harder for developers to missuse code
 </v-click>
-
-<v-click>
-
-### Deleted lines are a bonus. **Enforced constraints are the win** —<br>compilation errors instead of runtime errors.
-
-</v-click>
-
-<!--
-[0:38] The callback — the exact code from minute zero, morphing into its final form. The audience has seen every element before; that's what makes it land.
-
-"This is the switch from minute one. The question I opened with — which cases does that underscore cover — I never answered it. I didn't have to. The question doesn't exist anymore: every case is named, right here, at the call site. And it's not documentation that will rot — the compiler re-checks the list on every build, and names any case you forgot."
-
-Beat: "The compiler does the digging now."
-
-Last click — the real closer, slow down: "And look — I'm thrilled to delete lines from my code. Genuinely. But that's not why these constructs matter. They matter because they let us ENFORCE constraints that used to live in comments, in conventions, in code review. Every error you've seen today — CS9382, CS8509, CS1729 — used to be a runtime surprise. A crash, a silent skip, a wrong advance. Now they're compilation errors. And trading a runtime error for a compilation error is always — always — a huge win."
-
-Pause. Then: "Thank you." → advance to final slide during applause.
--->
 
 ---
 layout: center
@@ -1080,12 +953,22 @@ layout: center
 
 # Thank you
 
+<div class="flex items-center justify-center gap-12">
+
+<div>
+
 **Everything from today — code, demos, this deck:**
-`github.com/<you>/<this-repo>`
+`github.com/kimrs/fagkveld-knirkefritt
 
 - .NET **11 preview 6** · `<LangVersion>preview</LangVersion>` · syntax may shift before GA
 - The union & closed-hierarchy design: `github.com/dotnet/csharplang` — *Type Unions* proposal
 - Works because of: `TreatWarningsAsErrors` (or at least promote **CS8509**)
+
+</div>
+
+<FeedbackQr url="https://forms.gle/REPLACE_WITH_REAL_FORM_ID" caption="Scan to leave feedback" />
+
+</div>
 
 <!--
 Q&A prep — likely questions and your answers:

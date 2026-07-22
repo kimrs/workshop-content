@@ -9,6 +9,7 @@
   "dependencies": {
     "@slidev-polls/component": "^0.6.0",
     "@slidev/cli": "latest",
-    "@slidev/theme-default": "latest"
+    "@slidev/theme-default": "latest",
+    "qr-code-styling": "^1.9.2"
   }
 }
