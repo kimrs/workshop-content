@@ -55,9 +55,9 @@ layout: center
 <!--
 Jeg har laget en presentasjon for dere.
 Vi skal ta en titt på to nye features i C# 15
-og utforske hvordan disse kan forbedre koden vår
-Den første vi skal se på er closed
-Den andre er union types
+og utforske hvordan disse kan forbedre koden vår.
+- Den første vi skal se på er closed
+- Den andre er union types
 Men først skal jeg introdusere dere for domenet
 -->
 
@@ -70,8 +70,8 @@ Men først skal jeg introdusere dere for domenet
 
 <!--
 Caset vi skal jobbe med er at Marvel har kjøpt DC Comics
-De skal nå migrere superhelter fra DC universet til Marvel universet
-For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
+- De skal nå migrere superhelter fra DC universet til Marvel universet
+- For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
 -->
 ---
 
@@ -80,9 +80,16 @@ For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
 <<< ./snippets/architecture.mmd mermaid
 
 <!--
-Caset vi skal jobbe med er at Marvel har kjøpt DC Comics
-De skal nå migrere superhelter fra DC universet til Marvel universet
-For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
+Her er en oversikt over hvordan appen vår ser ut i dag
+- Vi strukturerer koden vår etter Ports & Adapters arkitektur
+- Vi har tre porter
+    - ILockSource låser DC Comics systemet
+    - ILockTarget låser Marvel systemet
+    - INotifyCompletion varsler når superheltene er migrert
+- Koden består av tre dll-er.
+    - Mt.Domain som inneholder porter og foretningslogikk
+    - Mt.DistinctComics som kommuniserer med det gamle systemet
+    - Mt.Marble som kommuniserer med det nye systemet
 -->
 ---
 
@@ -317,15 +324,15 @@ Hvilke andre utfall kan det være snakk om?
 
 
 <!--
-[0:10] Keep this to TWO minutes — it's context, not a thesis. Resist the architecture tangent.
+Om vi tar en titt på arkitekturen våres igjen. Så ser vi at appen består av 3 dller.
 
-Say: "Hero migration pipeline: lock the hero in Distinct Comics and in Marble, transform, unlock, tell the user. Each step is a handler. Handlers talk to the outside world through ports — interfaces the domain owns. Adapters implement them: Postgres, Distinct Comics, Marble."
+- klikk
 
-The one sentence that matters for the rest of the talk: "Every port answers with a Response record — one subtype per business outcome. Proceed or DoNotProceed. Locked or Faulted. Scheduled or Exhausted. Which means every handler is full of switches over open hierarchies — every one of them wearing an underscore."
+Mt.DistinctComics og Mt.Marble har begge referanser til Mt.Domain
+Begge disse har lov til å arve fra typer i Mt.Domain
+Siden kompilatoren ikke ser utenfor sin egen dll, så vet den ikke om potensielle andre dller som arver.
+Derfor tvinger den oss til å ta hensyn til uforutsette typer som skulle dukke opp. 
 
-Click — Mt.DistinctComics and Mt.Marble light up: "And note these two projects. They reference Mt.Domain, so they can inherit from any public class in it — including every Response type. Remember that; it's why the compiler was right to complain."
-
-"So every decision in this codebase carries the reading tax from the opening. Let's remove it."
 -->
 
 ---
@@ -354,6 +361,15 @@ public sealed class DistinctComicsLockSource : ILockSource
 }
 ```
 
+<!--
+I Mt.DistinctComics ser vi faktisk at noen har arvet fra ILockSource.Response.
+- Klikk
+Dette er noe kompilatoren tillater. Men det er helt feil bruk av responsen.
+Om utvikleren ønsket en tredje type, så skulle hen ha definert den i Mt.Domain under ILockSource.Response.
+Men han var på fest i går og sov dårlig i natt og tenkte seg ikke om. Og dermed havnet vi her.
+Men, frykt ikke. Med neste versjon ac c# så kan vi forhindre dette.
+Er det noen som tørr å gjette hvilken feature vi skal benytte oss av?
+-->
 ---
 
 # The `closed` newcomer
@@ -369,12 +385,18 @@ public sealed class DistinctComicsLockSource : ILockSource
 
 </v-click>
 
+<!--
+Vi skal benytte oss av closed hierarchies. Det er et nytt nøkkelord som sier at
+- klikk
+Kun typer i samme assembly kan arve
+- klikk
+Typer som er closed vil også være abstract.
+-->
 
 ---
 
 # The `closed` newcomer
-````md magic-move
-```csharp
+```csharp {all|6}
 // Mt.Domain.ILockSource
 public interface ILockSource
 {
@@ -387,7 +409,16 @@ public interface ILockSource
     }
 }
 ```
-```csharp
+<!--
+Så vi endrer
+- klikk
+abstract nøkkel ordet til Response
+-->
+
+---
+
+# The `closed` newcomer
+```csharp {6|all}
 // Mt.Domain.ILockSource
 public interface ILockSource
 {
@@ -400,13 +431,16 @@ public interface ILockSource
     }
 }
 ```
-````
+
+<!--
+Til å være closed
+- klikk
+-->
 
 ---
 
 # The `switch` loses the discard
-````md magic-move
-```csharp
+```csharp{all|10}
 // Mt.Domain.Handler
 var action = lockSource.Handle(migrationId) switch
 {
@@ -419,7 +453,17 @@ var action = lockSource.Handle(migrationId) switch
     _ => throw new ArgumentOutOfRangeException(nameof(migrationId), …)
 };
 ```
-```csharp
+
+<!--
+Om vi nå tar en titt på switchen
+- klikk
+Så er det ikke lengre behov for default caset. Vi kan fjerne den
+- klikk
+-->
+
+---
+
+```csharp {none|all}
 // Mt.Domain.Handler
 var action = lockSource.Handle(migrationId) switch
 {
@@ -430,7 +474,11 @@ var action = lockSource.Handle(migrationId) switch
         => $"⏰ Lock faulted ({reason}) — scheduling retry",
 };
 ```
-````
+
+<!--
+Fordi kompilatoren er nå trygg på at den kjenner til alle typer som arver fra Response
+- klikk
+-->
 
 ---
 
@@ -451,6 +499,13 @@ public sealed record Throttled(TimeSpan RetryAfter) : ILockSource.Response;
   <img src="/borat.jpg" class="h-52 rounded-lg shadow-xl rotate-2" alt="Borat" />
 </div>
 
+<!--
+Om vi ser tilbake til adapteret der noen hadde arvet fra ILockSoure.Response
+Så vil ikke dette lengre kompilere
+- klikk
+Akkurat slik vi ønsker det. 
+
+-->
 
 ---
 layout: center
@@ -463,13 +518,18 @@ layout: center
   </div>
 </div>
 
+<!--
+Men Microsoft har gitt oss enda en måte å løse dette på.
+Hva kan det være?
+-->
+
 ---
 
 # The union type
 - Alternative way to exhaust the switch
 - Works on types that have nothing to do with each other
 
-```csharp
+```csharp {all|5}
 public interface ILockSource
 {
     Response Handle(long migrationId);
@@ -484,6 +544,13 @@ public interface ILockSource
     }
 }
 ```
+<!--
+Union types!
+Union types lar en metode returnere flere typer som ikke har noe med hverandre å gjøre
+Vi skal nå skrive om ILockSource med å benytte oss av union types.
+- klikk
+Vi begynner med å endre Response fra å være en abstract record
+-->
 
 ---
 
@@ -491,7 +558,61 @@ public interface ILockSource
 - Alternative way to exhaust the switch
 - Works on types that have nothing to do with each other
 
-```csharp
+```csharp {5}
+public interface ILockSource
+{
+    Response Handle(long migrationId);
+
+    public union Response
+    {
+        /// <summary>Source locked the hero.</summary>
+        public sealed record Locked : Response;
+
+        /// <summary>Source did not lock this time; the step decides whether to retry.</summary>
+        public sealed record Faulted(string Reason) : Response;
+    }
+}
+```
+<!--
+Til å være en `union`
+-->
+
+---
+
+# The union type
+- Alternative way to exhaust the switch
+- Works on types that have nothing to do with each other
+
+```csharp {5 | all | 8,11}
+public interface ILockSource
+{
+    Response Handle(long migrationId);
+
+    public union Response(Response.Locked, Response.Faulted)
+    {
+        /// <summary>Source locked the hero.</summary>
+        public sealed record Locked : Response;
+
+        /// <summary>Source did not lock this time; the step decides whether to retry.</summary>
+        public sealed record Faulted(string Reason) : Response;
+    }
+}
+```
+
+<!--
+Videre legger vi in Locked og Faulted som parametre.
+Her definerer vi hva unionen består av
+-klikk
+Til slutt så fjerner vi Response som basetype til Locked og Faulted
+-->
+
+---
+
+# The union type
+- Alternative way to exhaust the switch
+- Works on types that have nothing to do with each other
+
+```csharp {8,11|all}
 public interface ILockSource
 {
     Response Handle(long migrationId);
@@ -520,11 +641,13 @@ public interface ILockSource
 </div>
 
 <!--
-Click 1 — the bullet: "And it works exactly like the closed version. Same exhaustiveness, same CS8509, same everything."
+Nå vil ILockSource fungere nøyaktig slik varianten med `closed` fungerte.
+Vi trenger ikke endre koden noe annet sted
 
-Click 2 — Jackie appears: "Which means C# now ships TWO ways of doing the same thing. I don't like that. I shouldn't have to choose between two constructs for one job. What the hell?"
+-klikk
 
-Let the laugh land, then the bridge: "It turns out they are NOT the same thing — they differ on exactly one axis. Next slide."
+Men dette var jo veldig irriterende. Nå må vi jo ta en beslutning om hvilken metode som er rett. 
+Så hva er rett å bruke
 -->
 
 ---
@@ -533,19 +656,10 @@ Let the laugh land, then the bridge: "It turns out they are NOT the same thing �
 - If the types represent different versions of the same thing? => `closed`
 - If the types represent completely different things => `union`
 
-<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
-  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
-    That's way too vague!
-  </div>
-  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
-</div>
 
 <!--
-Read the two bullets out loud, slowly — let the room FEEL how mushy they are. "Versions of the same thing"… "completely different things"… according to whom?
-
-Click — the facepalm: "I know. That's way too vague. You can argue any type into either bucket."
-
-The bridge: "So let me give you a test that isn't vague. It's about DATA. If the cases share data, only one of these constructs can even express that. Let me show you." → next slide, the INotifyCompletion Request example.
+Som en regel så sier vi at closed brukes når typene representerer forskjellige utgaves av samme sak
+og når typene representerer to forskjellige ting så bruker vi `union`
 -->
 
 ---
@@ -553,6 +667,13 @@ The bridge: "So let me give you a test that isn't vague. It's about DATA. If the
 # Which one is correct?
 
 <div class="grid grid-cols-2 gap-4 text-sm">
+
+<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
+  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
+    That's way too vague!
+  </div>
+  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
+</div>
 
 ```csharp
 // closed
@@ -612,6 +733,8 @@ FALLBACK if the network is down (phones show spinners): "The network has voted '
 ---
 
 # The verdict
+- If the types represent different versions of the same thing? => `closed`
+- If the types represent completely different things => `union`
 
 <div class="flex justify-center">
   <Poll />
