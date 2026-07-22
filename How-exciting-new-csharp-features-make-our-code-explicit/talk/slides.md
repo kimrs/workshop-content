@@ -61,12 +61,20 @@ og utforske hvordan disse kan forbedre koden vår.
 Men først skal jeg introdusere dere for domenet
 -->
 
---- 
 ---
+class: text-white
+---
+
+<img src="/heroes-clash.png" class="absolute inset-0 w-full h-full object-cover" />
+<div class="absolute inset-0 bg-gradient-to-r from-black/70 to-black/20"></div>
+
+<div class="relative z-10">
 
 # Migrate Distinct Comics heroes to Marble
 - Marble has bought Distinct Comics 
 - Our job is to migrate heroes from Distinct Comics to Marble
+
+</div>
 
 <!--
 Caset vi skal jobbe med er at Marvel har kjøpt DC Comics
@@ -583,7 +591,7 @@ Til å være en `union`
 - Alternative way to exhaust the switch
 - Works on types that have nothing to do with each other
 
-```csharp {5 | all | 8,11}
+```csharp {5|all|8,11}
 public interface ILockSource
 {
     Response Handle(long migrationId);
@@ -668,12 +676,6 @@ og når typene representerer to forskjellige ting så bruker vi `union`
 
 <div class="grid grid-cols-2 gap-4 text-sm">
 
-<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
-  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
-    That's way too vague!
-  </div>
-  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
-</div>
 
 ```csharp
 // closed
@@ -738,6 +740,13 @@ FALLBACK if the network is down (phones show spinners): "The network has voted '
 
 <div class="flex justify-center">
   <Poll />
+</div>
+
+<div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
+  <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
+    The rules are too vague!
+  </div>
+  <img src="/facepalm.jpg" class="h-48 rounded-lg shadow-xl rotate-1" alt="Facepalm statue" />
 </div>
 
 <!--

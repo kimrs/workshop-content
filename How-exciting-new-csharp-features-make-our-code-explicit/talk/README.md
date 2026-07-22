@@ -6,6 +6,19 @@ presenter view, not on screen.
 
 ## Run it
 
+**Fast path — `present.sh` does the whole runbook below for you:**
+
+```bash
+cd talk
+./present.sh setup   # first time: install, start the poll backend, create + wire the poll
+./present.sh         # every talk: backend + Cloudflare tunnel + dev deck, one command
+./present.sh warm    # optional: pre-warm the dotnet live-demo builds before you go on
+```
+
+The script writes only to `talk/.env.local` (git-ignored), so the ephemeral tunnel
+URL and your poll ids never get committed. The manual steps below are the same thing
+by hand, if you'd rather (or need to debug what the script does).
+
 ```bash
 cd talk
 npm install
