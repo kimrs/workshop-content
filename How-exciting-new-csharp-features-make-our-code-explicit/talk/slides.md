@@ -36,6 +36,9 @@ var action = lockSource.Handle(migrationId) switch
     _ => $"✅ Source locked — advancing migration {migrationId} to Transform",
 };
 ```
+<!--
+Er det noen av dere som ser en svakhet med denne kodesnutten?
+--->
 
 ---
 layout: center
@@ -43,18 +46,19 @@ layout: center
 
 # How Exciting New C# Features Make Our Code Explicit
 
-## `closed` hierarchies & `union` types in .NET 11
+## `closed` hierarchies & `union` types in C# 15
 
 <br>
 
 *your name — your event, 2026*
 
 <!--
-[0:05] NOW introduce yourself — 30 seconds max, the audience already has the problem in their heads.
-
-Frame the promise: "In the next 35 minutes: why that underscore is *required* today, what it costs us in reading and in evolution, and two brand-new C# constructs — closed hierarchies and union types — that each remove it. By the end you'll know exactly which one to reach for, because they are NOT the same feature."
-
-Mention: everything shown today is in one repo — code, demos, these slides — link on the last slide. .NET 11 preview 6, so one disclaimer: syntax may still shift before November.
+Jeg har laget en presentasjon for dere.
+Vi skal ta en titt på to nye features i C# 15
+og utforske hvordan disse kan forbedre koden vår
+Den første vi skal se på er closed
+Den andre er union types
+Men først skal jeg introdusere dere for domenet
 -->
 
 --- 
@@ -64,12 +68,22 @@ Mention: everything shown today is in one repo — code, demos, these slides —
 - Marble has bought Distinct Comics 
 - Our job is to migrate heroes from Distinct Comics to Marble
 
+<!--
+Caset vi skal jobbe med er at Marvel har kjøpt DC Comics
+De skal nå migrere superhelter fra DC universet til Marvel universet
+For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
+-->
 ---
 
 # Migration Tool Architecture
 
 <<< ./snippets/architecture.mmd mermaid
 
+<!--
+Caset vi skal jobbe med er at Marvel har kjøpt DC Comics
+De skal nå migrere superhelter fra DC universet til Marvel universet
+For å få til dette har de hyret oss inn til å lage verktøyet for å migrere
+-->
 ---
 
 # Find a weakness
@@ -94,6 +108,18 @@ var action = lockSource.Handle(migrationId) switch
 };
 ```
 
+<!--
+Her er en oversikt over hvordan appen vår ser ut i dag
+- Vi strukturerer koden vår etter Ports & Adapters arkitektur
+- Vi har tre porter
+    - ILockSource låser DC Comics systemet
+    - ILockTarget låser Marvel systemet
+    - INotifyCompletion varsler når superheltene er migrert
+- Koden består av tre dll-er.
+    - Mt.Domain som inneholder porter og foretningslogikk
+    - Mt.DistinctComics som kommuniserer med det gamle systemet
+    - Mt.Marble som kommuniserer med det nye systemet
+-->
 ---
 
 # So let's make it explicit
@@ -119,6 +145,25 @@ var action = lockSource.Handle(migrationId) switch
 };
 ```
 
+<!--
+Her er kodesnutten jeg viste dere tidligere. Den viser ILockSource porten og et utdrag der den blir brukt.
+ILockSource kan svare med to forskjellige responser. Locked eller Faulted.
+- Locked vil si at det gamle systemet ble låst
+- Faulted vil si at det gamle systemet ikke klarte å låse seg. I dette tilfellet ønsker vi å vente litt før vi prøver på nytt.
+Er det nå noen av dere som ser en svakhet her?
+
+Klikk
+
+Svakheten jeg vil fram til er at vi bruker default caset for å fange opp tilfellet der ILockSource returnerer Faulted
+Problemet jeg har med detter er at koden fanger Faulted caset på en implisitt måte.
+For å være sikker på at det er Faulted vi prøver å fange opp, så må jeg lete.
+Jeg må åpne ILockSource for å se hva som spyttes ut
+Dere spør sikkert dere selv nå "Hvem kunne finne på å skrive koden sin slikt?"
+Er det noen av dere som har lyst til å gjette?
+Det var Claude Code. Med Fable modellen!!
+Men, la oss ikke peke fingeren her. La oss heller prøve å være eksplisitt
+-->
+
 ---
 
 # So let's make it explicit
@@ -140,10 +185,22 @@ public interface ILockSource
 var action = lockSource.Handle(migrationId) switch
 {
     ILockSource.Response.Locked => $"✅ Source locked — advancing migration {migrationId} to Transform",
-    ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
+    ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry"
 };
 ```
 
+<!--
+
+- Klikk
+- Klikk
+
+Dette så jo mye bedre ut.
+Med å endre underscore til å være Faulted har vi gjort det implisitte eksplisitt.
+Nå kommer det tydelig fram at det bare er to caser switchen skal dekke.
+- Klikk
+Men nå har vi støtt på et annet problem. Hva er det?
+
+-->
 ---
 
 # So let's make it explicit
@@ -171,6 +228,12 @@ var action = lockSource.Handle(migrationId) switch
 };
 ```
 
+<!--
+Koden kompilerer ikke lengre. Fordi switchen håndterer ikke lengre alle mulige utfall.
+- Klikk
+Vi er nødt til å legge på en underscore.
+-->
+
 ---
 
 # So let's make it explicit
@@ -195,6 +258,11 @@ var action = lockSource.Handle(migrationId) switch
     _ => throw new ArgumentOutOfRangeException(nameof(migrationId), migrationId, null),
 };
 ```
+
+<!--
+Vi velger å kaste en exception i dette tilfellet.
+Med det signaliserer vi at denne kodesnutten ikke er designet for flere caser.
+-->
 
 ---
 
@@ -223,13 +291,9 @@ var action = lockSource.Handle(migrationId) switch
 ```
 
 <!--
-[0:06] Key teaching moment — the underscore is not laziness, it is REQUIRED.
-
-"Response is a public abstract record. Any assembly — another project in this solution, a NuGet package — can derive from it. So when I switch over it, the compiler is RIGHT: my two named cases don't cover everything, because the set of cases is open. The underscore isn't sloppiness. It's the only honest answer to a type that can't state its own boundaries."
-
-"The switch was never the problem. The TYPE is the problem — it's open, and my domain is closed. The language just had no way to say so. Until now."
-
-Last click — the foreshadow: "And before you file this under 'adapter problem': the Result type — completed-or-failed, the one every handler here returns — has the exact same shape, and its combinators carry the exact same underscore. We'll come back to it; it gets its own feature."
+Men hvorfor tvinger kompilatoren oss til å legge til dette?
+Response har jo bare to undertyper.
+Hvilke andre utfall kan det være snakk om?
 -->
 
 ---
