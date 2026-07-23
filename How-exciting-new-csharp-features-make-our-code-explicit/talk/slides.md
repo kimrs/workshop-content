@@ -124,16 +124,33 @@ var action = lockSource.Handle(migrationId) switch
 ```
 
 <!--
-Her er en oversikt over hvordan appen vår ser ut i dag
-- Vi strukturerer koden vår etter Ports & Adapters arkitektur
-- Vi har tre porter
-    - ILockSource låser DC Comics systemet
-    - ILockTarget låser Marvel systemet
-    - INotifyCompletion varsler når superheltene er migrert
-- Koden består av tre dll-er.
-    - Mt.Domain som inneholder porter og foretningslogikk
-    - Mt.DistinctComics som kommuniserer med det gamle systemet
-    - Mt.Marble som kommuniserer med det nye systemet
+Her er kodesnutten dere så tidligere igjen.
+Den viser ILockSource slik den er definert i Mt.Domain.
+Den returnerer to typer svar.
+
+- Locked om det eksterne systemet klarte å låse
+
+- Faulted om det eksterne systemet misslyktes.
+
+Vi anser Faulted som et likeverdig forretningscase fordi den representerer ikke noe som gikk galt hos oss, men noe som gikk galt 
+i det eksterne systemet.
+
+Under ser vi et utdrag fra Mt.Domain.Handler der vi benytter oss av interfacet.
+Den inneholder en switch som skedulerer en retry om systemet ikke ble låst
+og ellers avanserer til neste steg. 
+
+Med konteksten ferskt i minnet så ønsker jeg å spørre dere igjen
+"Er det noen svakheter med kodesnutten dere ser her?"
+
+- Vent på svar
+
+Det jeg vil fram til er default caset i switchen. 
+
+- Klikk
+
+Istedenfor å eksplisitt konstatere at Locked avanserer videre, så sier vi det implisitt med å bruke default caset.
+Problemet med implisitt kode er at jeg må lete for å se hele bildet. I dette tilfellet må jeg ta en titt inn i ILockSource for å
+se hva mulighetene er.
 -->
 ---
 
@@ -161,18 +178,6 @@ var action = lockSource.Handle(migrationId) switch
 ```
 
 <!--
-Her er kodesnutten jeg viste dere tidligere. Den viser ILockSource porten og et utdrag der den blir brukt.
-ILockSource kan svare med to forskjellige responser. Locked eller Faulted.
-- Locked vil si at det gamle systemet ble låst
-- Faulted vil si at det gamle systemet ikke klarte å låse seg. I dette tilfellet ønsker vi å vente litt før vi prøver på nytt.
-Er det nå noen av dere som ser en svakhet her?
-
-Klikk
-
-Svakheten jeg vil fram til er at vi bruker default caset for å fange opp tilfellet der ILockSource returnerer Faulted
-Problemet jeg har med detter er at koden fanger Faulted caset på en implisitt måte.
-For å være sikker på at det er Faulted vi prøver å fange opp, så må jeg lete.
-Jeg må åpne ILockSource for å se hva som spyttes ut
 Dere spør sikkert dere selv nå "Hvem kunne finne på å skrive koden sin slikt?"
 Er det noen av dere som har lyst til å gjette?
 Det var Claude Code. Med Fable modellen!!
@@ -205,14 +210,15 @@ var action = lockSource.Handle(migrationId) switch
 ```
 
 <!--
+Med å endre underscore til å være Faulted har vi gjort det implisitte eksplisitt.
 
-- Klikk
 - Klikk
 
 Dette så jo mye bedre ut.
-Med å endre underscore til å være Faulted har vi gjort det implisitte eksplisitt.
 Nå kommer det tydelig fram at det bare er to caser switchen skal dekke.
+
 - Klikk
+
 Men nå har vi støtt på et annet problem. Hva er det?
 
 -->
@@ -721,15 +727,9 @@ public interface ILockSource
 </div>
 
 <!--
-LIVE POLL — the audience scans the QR and votes on their phones.
-
-The question opens AUTOMATICALLY when this slide shows (hidden PollResults panel above — requires the toolbar sign-in). Fallback: open the admin UI on your phone and flip the question to ACTIVE. Either way the admin UI doubles as YOUR live tally view; the room sees no numbers yet.
-
-Narrate while they vote: "Both compile. Both are exhaustive. Both delete the discard. So which one is the right way to write ILockSource? You have thirty seconds."
-
-When the flow of votes dries up in the admin view → advance. The next slide reveals the tally and closes the question.
-
-FALLBACK if the network is down (phones show spinners): "The network has voted 'abstain'. Old school then — hands up for closed… hands up for union… hands up for 'how should I know?'" (Thank the third group — they're the honest ones.)
+Da vil jeg invitere dere til å ta fram telefonene deres og scanne QR koden.
+Dere skal stemme på hvilken versjon dere syns ser mest rett ut. Jeg loggfører ikke hvem som
+har svart hva, så svar det dere tror uten å se på hva de andre svarer. 
 -->
 
 ---
@@ -750,11 +750,12 @@ FALLBACK if the network is down (phones show spinners): "The network has voted '
 </div>
 
 <!--
-The reveal — advancing to this slide closes the question and the tally animates in on the big screen.
+Det ser ut til at dere har svart litt forskjellig her. Det tyder bare på en ting
 
-React to whatever the room actually said. Whichever way it leans: "Here's the thing — there was no right answer on that slide. Both are correct. And that's exactly the problem." → next slide, the when-to-use bullets (and the facepalm).
+- Klikk
 
-If the poll was skipped (network fallback), skip this slide too — you already have the hands result.
+Reglene er for vage! La oss se om vi kan komme med noen andre regler med å ta en titt på en annen forskjell
+
 -->
 
 ---
@@ -777,9 +778,14 @@ public interface INotifyCompletion
 ```
 
 <!--
-"This is the completion notification. Both outcomes — migrated, cancelled — carry the migration id, hoisted into the BASE record's primary constructor. A union has no base to hoist anything into — this type is only expressible as a hierarchy."
+Når vi bruker `closed` så typene mulighet for å dele data. 
 
-Point at the bottom: "And the consumer reads request.MigrationId before any switch — it doesn't care which case it holds. Shared data, used polymorphically. That's why Response types get closed, not union."
+Vi ser her hvordan INotifyCompletion er definert.
+Forskjellen på denne kontra ILockSource er at INotifyCompletion returnerer ikke en `Response`
+men den tar inn en `Request`. Typen bestemmer hva vi forteller.
+Ble superhelten migrert så sender vi med `Migrated`
+Om vi kansellerte migreringen fordi datagrunnlaget ikke stemte så sender vi `Cancelled`
+Begge disse typene deler Id, så adapteret trenger ikke å convertere typen for å vite Id.
 -->
 
 ---
@@ -805,12 +811,26 @@ public interface INotifyCompletion
 }
 ```
 
+<!--
+En `union` ikke støtter delt data mellom typene.
+Det vil ikke kompilere. Derfor vil det ikke være mulig å velge
+`union` for akkurat denne requesten.
+Og siden `Request` og `Response` er to sider av samme sak. Så er det ikke naturlig å velge union for `Response` heller.
+Det er sansynlig at vi vil møte `Response` som deler data. Så da er det best at vi holder oss konsekvente.
+-->
 ---
 
 # When to use `union` and when to use `closed`
 <v-click>
 
+- House style matters
+
+</v-click>
+
+<v-click>
+
 - If the types share data? => `closed`
+
 </v-click>
 
 <v-click>
@@ -819,11 +839,6 @@ public interface INotifyCompletion
 
 </v-click>
 
-<v-click>
-
-- House style matters
-
-</v-click>
 
 <div v-click class="absolute bottom-10 right-10 flex items-start gap-3">
   <div class="bg-white border-2 border-black rounded-2xl px-4 py-2 text-2xl font-bold shadow-lg -rotate-2 self-start">
@@ -831,6 +846,26 @@ public interface INotifyCompletion
   </div>
   <img src="/madstorgersen.jpg" class="h-48 rounded-lg shadow-xl rotate-2" alt="Mads Torgersen mid-proclamation on stage" />
 </div>
+
+<!--
+- Klikk
+
+Sagt på en annen måte, så er det husets regler som gjelder
+
+- Klikk
+
+Om ikke huset har etablert noe mønster. Så bruker vi `closed` om typen deler data. Eventuelt om klassen har søsken som gjør det.
+Response og Request definert i portene våre anser jeg som søsken.
+
+- Klikk
+
+Om det ikke er tilfellet. Så bruker vi `union`
+
+- Klikk
+
+Før denne presentasjonen så ba Mads Torgersen meg om å vise et eksempel der det gir mening å bruke `union`.
+Selvfølgelig vil jeg det. Jeg ville født barna hans om naturen tillot
+-->
 
 ---
 
@@ -852,6 +887,15 @@ public interface ILockSource
 }
 ```
 
+<!--
+I det neste eksemplet vil jeg skrive om `Result` pattern til å bruke unions. 
+`Result` er noe teamet mitt har blitt svært glade i.
+Istedenfor å returnere en `Response` så returnerer vi en `Result` som wrapper `Response`
+`Result` kan enten være av typen `Completed` eller den kan være av typen `Failed`
+Om noe uforutsett gikk galt i adapteret, så vil vi motta en `Failed` istedenfor `Completed`
+Vi bruker altså ikke `Failed` for å representere irriterende foretningstilfeller der eksterne
+systemer sliter med å levere. Men heller for å signalisere at noe gikk galt på vår side.
+-->
 ---
 
 # The `Result` pattern
@@ -891,6 +935,11 @@ public sealed class Handler(
 
 </v-click>
 
+<!--
+`Result` har en `Then` metode som lar oss chaine uttrykk. Om `Then` returner `Failed`
+så vill the neste `Then` utrykkene hoppes over og variabelen vil ende opp med typen `Failed`.
+-->
+
 ---
 
 # The `Result` pattern
@@ -914,6 +963,11 @@ public static class Extensions
 }
 ```
 
+<!--
+Her ser vi implementasjonen av `Result`
+Slik den ser ut nå er den nokså tung å lese. Den er rotete fordi mye av teksten vi ser kun er der
+fordi C# krever det.
+-->
 ---
 
 # The `Result` pattern
@@ -936,6 +990,11 @@ public static class Extensions
     }
 }
 ```
+
+<!--
+Fra det vi har lært til nå burde vi ikke trenge noe default case i switchen
+-->
+
 ---
 
 # The `Result` pattern
@@ -959,6 +1018,40 @@ public static class Extensions
 }
 ```
 
+<!--
+Failed inneholder ikke noen underliggende verdi. Så det er ikke noe poeng i å gi den type parametre. Den er der kun fordi
+kompilatoren påkrever det. 
+
+-->
+
+---
+
+# The `Result` pattern
+```csharp
+public abstract record Result<T>;
+public sealed record Completed<T>(T Value) : Result<T>;
+public sealed record Failed<T>(string Reason) : Result<T>;
+
+public static class Extensions
+{
+    extension<T>(Result<T> result)
+    {
+        public Result<TRes> Then<TRes>(Func<T, Result<TRes>> next)
+            => result switch
+            {
+                Completed<T>(var value) => next(value),
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
+                _ => throw new Exception()                          // pointless default case
+            };
+    }
+}
+```
+
+<!--
+Det er også meningsløst å opprette en ny `Failed` her. Vi gjør det bare fordi
+resultatet som forventes er en `Failed` av `TRes` ikke `T`. 
+-->
+
 ---
 
 # The `Result` pattern
@@ -975,13 +1068,16 @@ public static class Extensions
             => result switch
             {
                 Completed<T>(var value) => next(value),
-                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
                 _ => throw new Exception()                          // pointless default case
             };
     }
 }
 ```
 
+<!--
+De unødvendige type parameterene går igjen i definisjonen av `Failed`
+-->
 ---
 
 # The `Result` pattern - with `union`
@@ -998,12 +1094,20 @@ public static class Extensions
             => result switch
             {
                 Completed<T>(var value) => next(value),
-                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
                 _ => throw new Exception()                          // pointless default case
             };
     }
 }
 ```
+<!--
+Når vi nå skriver dette om så starter vi med `Result`
+
+- klikk
+
+Vi endrer den fra å være `abstract record`
+
+-->
 
 ---
 
@@ -1021,12 +1125,18 @@ public static class Extensions
             => result switch
             {
                 Completed<T>(var value) => next(value),
-                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
                 _ => throw new Exception()                          // pointless default case
             };
     }
 }
 ```
+
+<!--
+Til å bli en `union`
+- klikk
+Vi kan da fjerne `Result` som base type for `Completed` og `Failed`
+-->
 ---
 
 # The `Result` pattern - with `union`
@@ -1043,13 +1153,18 @@ public static class Extensions
             => result switch
             {
                 Completed<T>(var value) => next(value),
-                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
                 _ => throw new Exception()                          // pointless default case
             };
     }
 }
 ```
 
+<!--
+Nå som `Failed` ikke har noe med `Result` å gjøre
+- klikk
+Så kan vi fjerne type parameteren
+-->
 ---
 
 # The `Result` pattern - with `union`
@@ -1066,12 +1181,19 @@ public static class Extensions
             => result switch
             {
                 Completed<T>(var value) => next(value),
-                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes
+                Failed<T>(var reason) => new Failed<TRes>(reason),  // pointless T and TRes, pointless new
                 _ => throw new Exception()                          // pointless default case
             };
     }
 }
 ```
+<!--
+Videre i switchen
+- klikk
+Så ser vi den virkelige gulrota. Ikke bare kan vi kvitte oss med typeparameterene.
+Vi trenger ikke en gang å newe opp en ny `Failed`.
+Det holder å returnere den som allerede er der. 
+-->
 
 ---
 
@@ -1095,6 +1217,12 @@ public static class Extensions
     }
 }
 ```
+
+<!--
+Til slutt så kan vi kvitte oss med default caset
+- klikk
+-->
+
 ---
 
 # The `Result` pattern - with `union`
@@ -1122,9 +1250,9 @@ public static class Extensions
 </div>
 
 <!--
-The code fully reveals — the whole `Then` combinator, no pointless default case, exhaustive on the two union members.
+Er det ikke vakkert?
 
-Click — the chef appears: "And THAT is the whole pattern. Two cases, exhaustively matched, no `_ => throw` to apologise for. Chef's kiss."
+- klikk
 -->
 
 ---
@@ -1140,8 +1268,26 @@ Click — the chef appears: "And THAT is the whole pattern. Two cases, exhaustiv
 </v-click>
 <v-click>
 
- - Make it harder for developers to missuse code
+ - Make it harder for developers/claude to missuse code
 </v-click>
+
+<!--
+I denne AI tiden vi befinner oss i så tar jeg meg ofte i å stille spørsmålet.
+Er dette egentilg så viktig?
+Enn så lenge så heller jeg mot at det for skalerbare systemer er viktigere enn noen gang å holde koden ryddig.
+Vi tilbringer mindre tid med koden når AI skriver den. Det gjør det lettere å glemme hva koden gjør.
+Et begrep jeg ofte har hørt i år er "kognitiv gjeld". Altså, problemer med at utviklerne i prosjektet ikke helt
+forstår hvordan systemet fungerer. Koden er ikke bare det som får noe til å fungere. Det er også den eneste
+100% korrekte instruksjonsmanualen vi har for systemet. Med å fokusere på å holde koden vår fritt for unødvendig
+rot gjør vi det enklere for oss selv å forstå hva vi har skapt. Og kan med det, enklere forklare hvorfor noe ikke
+gikk som det skulle om uhellet skulle være ute.
+
+Det er ikke bare jeg som syns det fortsatt er viktig. Microsoft hadde ikke fortsatt puttet resurrser i å videreutvikle
+C# om det ikke var fordi de fortsatt trudde det hadde en verdi.
+
+Den dagen de også bestemmer seg for at ryddig kode ikke har noen verdi, blir den samme dagen jeg river ned
+Mads Torgersen plakaten jeg har hengende på soverommet og erstatter den med noe AI generert.
+-->
 
 ---
 layout: center
@@ -1157,8 +1303,7 @@ layout: center
 `github.com/kimrs/fagkveld-knirkefritt
 
 - .NET **11 preview 6** · `<LangVersion>preview</LangVersion>` · syntax may shift before GA
-- The union & closed-hierarchy design: `github.com/dotnet/csharplang` — *Type Unions* proposal
-- Works because of: `TreatWarningsAsErrors` (or at least promote **CS8509**)
+- The union & closed-hierarchy design: `github.com/dotnet/csharplang`
 
 </div>
 
@@ -1167,17 +1312,14 @@ layout: center
 </div>
 
 <!--
-Q&A prep — likely questions and your answers:
+Med det så ønsker jeg å takke for meg.
 
-1. "Why not the OneOf library?" — OneOf gives you a container TODAY and it's good. The language feature adds: exhaustiveness enforced at every switch site by name (OneOf's .Match forces arity, but switch/patterns integration is native), real pattern matching, no T0/T1 noise, and no dependency. If you're on .NET 8/10 today: OneOf is the bridge, this is the destination.
+Jeg har brukt .Net 11 preview 6 for å lage kode eksemplene. Syntaksen kan endre seg før den slippes i
+november. Presentasjonen kan dere se på github. Som kilde har jeg tatt en titt på forslagene i dotnet
+sitt Github repo. 
 
-2. "When does this ship?" — .NET 11 GA is November 2026; these are preview-6 features behind LangVersion preview. Syntax risk is real but shrinking; semantics (exhaustiveness, closed = same-assembly) have been stable across previews.
-
-3. "Isn't closed just Kotlin's sealed class?" — Yes, deliberately (and union is Rust's enum / F#'s DU). C# is unusual in shipping BOTH, because it has 20 years of hierarchies to retrofit AND wants the honest choice type for new code.
-
-4. "Performance of unions?" — the wrapper is a struct holding an object reference; class cases allocate as before, the wrapper itself doesn't. Measure before worrying.
-
-5. "What about closed enums / closed interfaces?" — in the proposal family, not in preview 6; don't promise.
-
-6. "Serialization?" — untested territory, expect the wrapper to leak exactly like Assert.IsType did. Test before shipping unions across a wire.
+Før vi går i gang med spørsmål så ønsker jeg at dere gjør meg
+en tjeneste. Jeg ønsker å bli bedre på å lage og holde presentasjoner så jeg hadde satt stor pris på 
+om dere scannet QR koden og fylte ut tilbakemeldings sjemaet. Jeg loggfører ikke epost adresser, så ikke
+bekymre dere for at jeg ser hvem som skriver hva.
 -->
