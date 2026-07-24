@@ -44,13 +44,13 @@ Er det noen av dere som ser en svakhet med denne kodesnutten?
 layout: center
 ---
 
-# How Exciting New C# Features Make Our Code Explicit
+# New Features in C# 15 that limits innuendoes
 
 ## `closed` hierarchies & `union` types in C# 15
 
 <br>
 
-*your name — your event, 2026*
+*Kim Rune Solstad — Knirkefritt Fagkveld September, 2026*
 
 <!--
 Jeg har laget en presentasjon for dere.
@@ -144,10 +144,76 @@ Med konteksten ferskt i minnet så ønsker jeg å spørre dere igjen
 
 - Vent på svar
 
-Det jeg vil fram til er default caset i switchen. 
-
 - Klikk
 
+Det jeg vil fram til er default caset i switchen. 
+For å forklare hvorfor ønsker jeg å dele noe som skjedde for mange år siden.
+-->
+---
+
+<!--
+Tidlig i karrieren så veiledet jeg og en kollega en student gruppe på tre stykker med å skrive master oppgave.
+Gruppa bestod av 1 gutt og 2 jenter. En dag vi hadde et møte så dukket ikke jentene opp.
+Så jeg åpnet møtet med et spontant forsøk på humor.
+
+"Så du klarte å skremme bort jentene. Kan ikke si jeg er jeg er overrasket."
+
+Men han lo ikke. Han ga meg bare et irritert blikk og spurte.
+
+"Hva mente du med det?"
+
+Jeg kjente på litt desperasjon, men trodde fortsatt stoltheten min kunne reddes og sa.
+
+"Å... Det vil du ikke vite"
+
+Han hevet stemmen sin og sa
+"Du bestemmer ikke hva jeg vil vite. Ut med det!"
+
+- stillhet
+
+Jeg hadde ikke tenkt så langt. Jeg ble taus.
+Det fantes ingen mening bak spøken. Strengt talt så var dette ikke en spøk, men heller en
+uberettiget forærmelse i forkledning.
+
+Jeg hadde insinuert at han var en som skremmer bort jenter.
+Og det øyeblikket noen krevde at jeg viste fram hva jeg insinuerte. Så var ikke dette noe jeg kunne stå for.
+
+Etter en evighet reddet min litt mer sosialt tilpasset kollega meg og styrte oss tilbake til agendaen.
+Men jeg kjenner enda på skammen over å konstantere noe implisitt som jeg ikke hadde ballene til å være eksplisitt om.
+
+Den dagen forandret jeg måten jeg snakker på. Om jeg ikke kan si noe direkte, så har jeg ingenting med å antyde det.
+Senere har jeg tatt dette i andre former jeg kommuniserer på. En viktig kommunikasjonskanal mellom meg og mine kollegare,
+er koden vi skriver. Så når jeg ser kode som antyder istedenfor å være direkte så prøver jeg å stille spørsmålet igjen.
+
+"Hva mener du med det?"
+
+-->
+---
+
+# Find a weakness
+```csharp {17}
+// Mt.Domain.ILockSource
+public interface ILockSource
+{
+    Response Handle(long migrationId);
+
+    public abstract record Response
+    {
+        public sealed record Locked : Response;
+        public sealed record Faulted(string Reason) : Response;
+    }
+}
+
+// Mt.Domain.Handler
+var action = lockSource.Handle(migrationId) switch
+{
+    ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
+    _ => $"✅ Source locked — advancing migration {migrationId} to Transform",
+};
+```
+
+<!--
+Tilbake til switch casen. 
 Istedenfor å eksplisitt konstatere at Locked avanserer videre, så sier vi det implisitt med å bruke default caset.
 Problemet med implisitt kode er at jeg må lete for å se hele bildet. I dette tilfellet må jeg ta en titt inn i ILockSource for å
 se hva mulighetene er.
@@ -276,7 +342,7 @@ var action = lockSource.Handle(migrationId) switch
 {
     ILockSource.Response.Locked => $"✅ Source locked — advancing migration {migrationId} to Transform",
     ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
-    _ => throw new ArgumentOutOfRangeException(nameof(migrationId), migrationId, null),
+    _ => throw new UnreachableException()
 };
 ```
 
@@ -307,7 +373,7 @@ var action = lockSource.Handle(migrationId) switch
 {
     ILockSource.Response.Locked => $"✅ Source locked — advancing migration {migrationId} to Transform",
     ILockSource.Response.Faulted(var reason) => $"⏰ Lock faulted ({reason}) — scheduling retry",
-    _ => throw new ArgumentOutOfRangeException(nameof(migrationId), migrationId, null),
+    _ => throw new UnreachableException()
 };
 ```
 
@@ -464,7 +530,7 @@ var action = lockSource.Handle(migrationId) switch
     ILockSource.Response.Faulted(var reason)
         => $"⏰ Lock faulted ({reason}) — scheduling retry",
 
-    _ => throw new ArgumentOutOfRangeException(nameof(migrationId), …)
+    _ => throw new UnreachableException()
 };
 ```
 
@@ -760,7 +826,7 @@ Reglene er for vage! La oss se om vi kan komme med noen andre regler med å ta e
 
 ---
 
-# `closed` support shared data
+# `closed` supports shared data
 
 ```csharp
 namespace Mt.Domain;
@@ -799,7 +865,7 @@ public interface INotifyCompletion
 {
     void Handle(Request request);
 
-    public closed record Request(Id MigrationId)
+    public union Request(Id MigrationId)
     {
         public sealed record Migrated(Id MigrationId) : Request(MigrationId);
 //                                                  ~~~~~~~~~~~~~~~~~~~~
@@ -835,7 +901,7 @@ Det er sansynlig at vi vil møte `Response` som deler data. Så da er det best a
 
 <v-click>
 
-- If the types does not share data? => `union`
+- If the types do not share data? => `union`
 
 </v-click>
 
@@ -1268,7 +1334,7 @@ Er det ikke vakkert?
 </v-click>
 <v-click>
 
- - Make it harder for developers/claude to missuse code
+ - Make it harder for developers/claude to misuse code
 </v-click>
 
 <!--
@@ -1300,7 +1366,7 @@ layout: center
 <div>
 
 **Everything from today — code, demos, this deck:**
-`github.com/kimrs/fagkveld-knirkefritt
+`github.com/kimrs/fagkveld-knirkefritt`
 
 - .NET **11 preview 6** · `<LangVersion>preview</LangVersion>` · syntax may shift before GA
 - The union & closed-hierarchy design: `github.com/dotnet/csharplang`
